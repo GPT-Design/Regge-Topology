@@ -9,13 +9,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+steps:
+  - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+  - uses: actions/setup-python@v4
+    with:
+      python-version: '3.11'
 
-      - run: pip install -r requirements.txt
+  # NEW: upgrade pip to the latest wheel-aware version
+  - run: python -m pip install --upgrade pip
 
-      - run: pytest -q
+  - run: pip install -r requirements.txt
+
+  - run: pytest -q
