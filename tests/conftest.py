@@ -1,21 +1,20 @@
 import pytest
-import importlib
+import traceback
 
-def _has_cupy_cuda() -> bool:
-    """Return True if CuPy can see at least one CUDA device."""
+def _gpu_available() -> bool:
+    """Return True if CuPy can import **and** CUDA is usable. 
+    Store the failure reason so pytest can show it."""
     try:
-        # Import cupy only if it's really there
-        cp_spec = importlib.util.find_spec("cupy")
-        if cp_spec is None:
-            return False
-
-        import cupy as cp  # noqa: F401
-        # Runtime call that exists in every current CuPy
-        return cp.cuda.runtime.getDeviceCount() > 0
-    except Exception:
+        import cupy as cp
+        cp.cuda.runtime.getDeviceCount()        # probe once
+        return True
+    except Exception as e:
+        _gpu_available.reason = traceback.format_exception_only(type(e), e)[0].strip()
         return False
 
+_gpu_available.reason = "initial probe not run"
+
 skip_gpu = pytest.mark.skipif(
-    not _has_cupy_cuda(),
-    reason="CuPy or CUDA driver not available",
+    not _gpu_available(),
+    reason=lambda: f"GPU unavailable: {_gpu_available.reason}",
 )
