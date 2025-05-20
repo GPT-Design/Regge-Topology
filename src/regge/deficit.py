@@ -1,42 +1,39 @@
 import math, numpy as np
 from collections import defaultdict
 
-# --- minimal-image helper -----------------------------------------------
-def _d(a, b):
+# ---------------- helpers -----------------
+def _d(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Minimal-image displacement on a unit 3-torus."""
     v = b - a
-    return v - np.round(v)          # wrap into (-0.5 … +0.5]
+    return v - np.round(v)
 
-def _dihedral(p, q, r, s):
+def _dihedral(p, q, r, s) -> float:
     n1 = np.cross(_d(p, q), _d(p, r))
     n2 = np.cross(_d(p, q), _d(p, s))
     cosφ = np.dot(n1, n2) / (np.linalg.norm(n1) * np.linalg.norm(n2))
     return math.acos(max(-1.0, min(1.0, cosφ)))
 
-# --- public --------------------------------------------------------------
+# ---------------- main API ----------------
 def max_hinge_deficit(verts: np.ndarray, tets: np.ndarray) -> float:
     """
-    Periodic 3-torus hinge deficit – returns max |2π − Σθ| over all edges.
+    Return the maximum hinge-deficit |2π − Σθ| over all edges
+    of a periodic tetra mesh on the 3-torus.
     """
     angle_sum = defaultdict(float)
 
-    for i, j, k, l in tets:               # indices straight from the array
-        p, q, r, s = verts[[i, j, k, l]]
-        # 3 faces around edge (i,j)
-        angle_sum[tuple(sorted((i, j)))] += _dihedral(p, q, r, s)
-        angle_sum[tuple(sorted((i, j)))] += _dihedral(p, q, s, r)
-        angle_sum[tuple(sorted((i, j)))] += _dihedral(p, q, r, s)  # <-- can choose proper faces, but easier: iterate explicit 6 edges
-    # simpler: do all 6 edges explicitly
-    angle_sum = defaultdict(float)
     for i, j, k, l in tets:
-        p, q, r, s = verts[[i, j, k, l]]
-        edges = ((i, j, r, s),
-                 (i, k, q, s),
-                 (i, l, q, r),
-                 (j, k, p, s),
-                 (j, l, p, r),
-                 (k, l, p, q))
+        idx  = (i, j, k, l)
+        v    = verts[list(idx)]
+        edges = (
+            (0, 1, 2, 3),
+            (0, 2, 1, 3),
+            (0, 3, 1, 2),
+            (1, 2, 0, 3),
+            (1, 3, 0, 2),
+            (2, 3, 0, 1),
+        )
         for a, b, c, d in edges:
-            angle_sum[tuple(sorted((a, b)))] += _dihedral(
-                verts[a], verts[b], verts[c], verts[d])
+            key = tuple(sorted((idx[a], idx[b])))
+            angle_sum[key] += _dihedral(v[a], v[b], v[c], v[d])
 
     return max(abs(2 * math.pi - θ) for θ in angle_sum.values())
